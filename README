@@ -1,0 +1,34 @@
+***
+*** HOW TO PREPARE AND RUN MC SIMULATIONS FOR A REACTION-RATE UNCERTAINTY STUDY
+***
+
+1. Prepare a list (the text file "reaction_factors.txt") of isotopes whose (n,g) cross sections are 
+   to be varied with their maximum variation factors in the last columns in the following format:
+
+   SR 93  10.0
+   Y  90   5.0
+   Y  92  10.0
+   ZR 99   5.0
+   ZR100  10.0
+    
+   (n,g) reactions can easily be replaced with other reactions, e.g. (p,g), etc.
+
+2. The fortran program "prep_mc_network.f"
+   uses this list to generate a large number (say, "nmc=10000") of "networksetup_imc.txt" files, 
+   where "imc=1,nmc", with randomly selected multiplication factors for the listed reaction rates 
+   from a "template_networksetup.txt" file that is used in the benchmark model.
+
+   Don't forget to copy template_networksetup.txt to networksetup_0.txt AFTERWARDS!
+
+   This program also generates text file "reaction_factors_mult.txt"
+   that contains arrays of the applied variation factors 
+   for each of the MC runs.
+
+3. Run the shell script onezone_MC_sims.sh that cycles over "imc=1,nmc" to copy the generated 
+   "networksetup_imc.txt" files one after another to your ppn run directory and starts the runs.
+
+   The file ppn_physics.input must have ININET=3, so that ppn.exe uses the current file networksetup.txt.
+   
+   Check the content of onezone_MC_sims.sh to see if the names of the run and result directories are correct.
+
+4. Then use a jupyter notebook to read the MC simulation data and analyze them.
