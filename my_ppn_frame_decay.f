@@ -786,13 +786,13 @@ C *** do the actual network step:
 
 !*** dpa ***
 c        dzeitj = 2d0 ! 2-year decay time or
-c        dzeitj = 1d9 ! 1-Gyr decay time or
-         dzeitj = 1d7 ! 10 Myr decay time for Roederer work, so that ZR93 to decay to NB93
+         dzeitj = 1d9 ! 1-Gyr decay time or
+c        dzeitj = 1d7 ! 10 Myr decay time for Roederer work, so that ZR93 to decay to NB93
 c make the neutron abundance zero, so that there are no neutron captures during the decay
 c           yps(:,ispe("NEUT "))=0d0
 c        dzeitj = 1d-10 ! 1-Gyr decay time or
          dt = dzeitj*oneyear
-         T9 = 1d-6 ! no burning
+         T9 = 1d-3 ! no burning, do not make T9 lower than 1d-3!!!
 ! reevaluating the physics package with the different temperature
          call vital (rho,T9,v,istart,yps)
          call rnetw2008(ye,ZIS,AN,ZN,ISTART
@@ -802,10 +802,6 @@ C *** do the actual network step:
          call nucnet99(considerisotope,considerreaction,nvar,v,yps,T9,dt
      $        ,agej,ittd,dgrd,grdthreshold,irdn,CYMINFORMAL,rho
      $        ,mat_solv_option,iplot_flux_option,mtx2sps,nnz)
-C *** do the actual network step:
-c        call nucnet99(considerisotope,considerreaction,nvar,v,yps,T9,dt
-c    $        ,agej,ittd,dgrd,grdthreshold,irdn,CYMINFORMAL,rho
-c    $        ,mat_solv_option,iplot_flux_option,mtx2sps,nnz)
 !*** dpa ***
 
       if (plist.eq.2) acsp(1:list)=yps(1,ipl(1:list))
