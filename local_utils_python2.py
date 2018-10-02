@@ -1187,12 +1187,15 @@ def plot_ppn_abund(sol_ab,ppn_dir,cycle,ref=-1,zrange=None,yrange=None,clr='',mr
 
 # The following function plots [X/Fe] decayed element ratios  
 # for a specified cycle (time step) from a specified directory with results of PPN simulations
-def plot_ppn_xfe_abund(sol_ab,ppn_dir,cycle,zrange=None,yrange=None,shape='',msize=14,labels=True,label_fsize=12,title="",dely0=0.2,extr0=0.2,dilute=1.0,feh=0.0):
+def plot_ppn_xfe_abund(sol_ab,init_ab,ppn_dir,cycle,zrange=None,yrange=None,shape='',msize=14,labels=True,label_fsize=12,title="",dely0=0.2,extr0=0.2,dilute=1.0,keysol=1):
     '''
     Parameters 
     ----------
     sol_ab : string
        path to file with solar abundances that are used for scaling
+
+    init_ab : string
+       path to file with initial abundances that are used for scaling
 
     ppn_dir : string
        directory path to where results of PPN simulations are
@@ -1212,6 +1215,9 @@ def plot_ppn_xfe_abund(sol_ab,ppn_dir,cycle,zrange=None,yrange=None,shape='',msi
     labels : boolean
        if True then element labels are plotted
 
+    label_fsize : integer
+       size of elemental labels
+
     title : string
        title to plot if any      
 
@@ -1222,10 +1228,11 @@ def plot_ppn_xfe_abund(sol_ab,ppn_dir,cycle,zrange=None,yrange=None,shape='',msi
        additional shift of element label in y
 
     dilute : float
-       decimal logarithm of the dilution factor
+	dilution factor between 0. and 1.
 
-    feh : float
-       [Fe/H] ratio                      
+    keysol : int  
+	if keysol equal 0, don't subtract delxfe
+
     '''
 
 # read in solar abundances in the path sol_ab
@@ -1233,8 +1240,12 @@ def plot_ppn_xfe_abund(sol_ab,ppn_dir,cycle,zrange=None,yrange=None,shape='',msi
     sol_abu=utils.solar_elem_abund
     n_sol=len(sol_abu)
 
-    pb=ppn.abu_vector(ppn_dir)  # location of ppn simulation results
+# read in initial abundances in the path init_ab
+    utils.solar(init_ab,1.)
+    init_abu=utils.solar_elem_abund
+    n_init=len(init_abu)
 
+    pb=ppn.abu_vector(ppn_dir)  # location of ppn simulation results
 # this is a fragment of elemental_abund function from data_plot.py that prepares arrays for the plotting
     ztest=[0,200]
     title_items=None
@@ -1256,21 +1267,75 @@ def plot_ppn_xfe_abund(sol_ab,ppn_dir,cycle,zrange=None,yrange=None,shape='',msi
     n_el=len(z_el)-1  # number of stable (decayed) elements to plot
     z_el[n_el]  # the maximum Z in the results of ppn simulations
 
+
+    el_name_work=["  " for x in range(n_el)]
+
+#   el_name[0]='n'
+#   for i in range(n_el):
+#       z[i]=float(i)       #  Z=i in mppnp surf data output
+#       if (i>0):
+#               el_name[i]=utils.get_el_from_z(i)
+
     z=np.linspace(0,0,n_el)
     y=np.linspace(0,0,n_el)
 
+    if dilute > 1.:
+        dilute = 1.
+
+    if dilute < 0.:
+        dilute = 0.
+
+    delxfe = 0.
+    delx = 0.
+
+# find delxfe = lg nFe/nFe_sol to change abundance ratios to [X/Fe]
+    for i in range(n_el):
+        for k in range(n_sol):
+            z_sol=k+1
+            if float(z_sol)==z_el[i] and z_sol == 1:
+               delx = np.log10((dilute*el_abu[i]+(1.-dilute)*init_abu[k])/sol_abu[k])
+            if float(z_sol)==z_el[i] and z_sol == 26:
+               delxfe = np.log10((dilute*el_abu[i]+(1.-dilute)*init_abu[k])/sol_abu[k])
+    fehmod = delxfe - delx
+    print "\n delxfe =",delxfe,", delx =",delx,", fehmod =",fehmod
+
+# prepare plot arrays
+    j=-1
+    for i in range(n_el):
+        for k in range(n_sol):
+                z_sol=k+1
+                if float(z_sol)==z_el[i] and z_sol != 43 and z_sol != 61:
+#               if float(z_sol)==z_el[i]:
+                        j=j+1
+                        z[j]=z_el[i]
+                        y[j]=-20.
+                        el_name_work[j]=el_name[i]
+                        if sol_abu[k]>1e-30 and el_abu[i]>1e-30:
+                                y[j]=np.log10((dilute*el_abu[i]+(1.-dilute)*init_abu[k])/sol_abu[k])
+        n_plot=j+1
+
 # it is assumed that X = X_sol
 # take into account a reduced initial [Fe/H] and dilution
-    delxfe = feh - dilute
+#   delxfe = feh - dilute
 
-    for i in range(n_el):
-    	for k in range(n_sol):
-       		z_sol=k+1
-       		if z_sol == z_el[i]:
-         		z[i]=z_el[i]
-            		y[i]=-20.
-            		if sol_abu[k]>1e-30:
-                		y[i]=np.log10(el_abu[i]/sol_abu[k]) - delxfe
+#   for i in range(n_el):
+#   	for k in range(n_sol):
+#      		z_sol=k+1
+#      		if z_sol == z_el[i]:
+#        		z[i]=z_el[i]
+#           		y[i]=-20.
+#           		if sol_abu[k]>1e-30:
+#               		y[i]=np.log10(el_abu[i]/sol_abu[k]) - keysol*delxfe
+
+    z_plot=np.linspace(0,0,n_plot)
+    y_plot=np.linspace(0,0,n_plot)
+    el_name_plot=["  " for x in range(n_plot)]
+
+    for i in range(n_plot):
+        z_plot[i]=z[i]
+# delxfe changes abundance ratios to [X/Fe]
+        y_plot[i]=y[i] - keysol*delxfe
+        el_name_plot[i]=el_name_work[i]
 
 # plot scaled PPN abundances
     font = {'family' : 'Times New Roman','weight' : 'normal','size'   : 16}
@@ -1278,7 +1343,7 @@ def plot_ppn_xfe_abund(sol_ab,ppn_dir,cycle,zrange=None,yrange=None,shape='',msi
 
     if shape == '':
         shape='k-'
-    plt.plot(z,y,shape,markersize=msize)
+    plt.plot(z_plot,y_plot,shape,markersize=msize)
     #plt.plot(z,y,'k-')
     if zrange == None:
         plt.xlim(0,85)
@@ -1290,18 +1355,19 @@ def plot_ppn_xfe_abund(sol_ab,ppn_dir,cycle,zrange=None,yrange=None,shape='',msi
         plt.ylim(yrange)
     plt.xlabel('charge number Z')
     plt.ylabel('[X/Fe]')
+
     if labels == True:
-        for i in range(n_el):
-		if zrange != None and z[i] >= zrange[0] and z[i] <= zrange[-1]:
-			dely = dely0
-			extr = 0.0
-                	if i%2 != 0:
-				extr = extr0
-			dely = dely + extr
-			if i>1 and i<n_el-2 and y[i] < y[i-1] and y[i] < y[i+1]:
-        			dely = -dely - extr
-                        plt.text(z[i],y[i]+dely,el_name[i],fontsize=label_fsize)  # i+1 in the el name to skip neutron
-    plt.title(title)
+        for i in range(n_plot):
+                if zrange != None and z_plot[i] >= zrange[0] and z_plot[i] <= zrange[-1]:
+                        dely = dely0
+                        extr = 0.0
+                        if i%2 != 0:
+                                extr = extr0
+                        dely = dely + extr
+                        if i>0 and i<n_plot-2 and y_plot[i] < y_plot[i-1] and y_plot[i] < y_plot[i+1]:
+                                dely = -dely - extr
+                        plt.text(z_plot[i],y_plot[i]+dely,el_name_plot[i],horizontalalignment='center',fontsize=label_fsize)
+    plt.title(title,fontsize=label_fsize)
 
 def plot_isoabund(p,cycle, ifig=151, stable = False, decayed = False, \
                   amass_range = None, ylim = [0,0], ref = -1, title_format = 1, 
